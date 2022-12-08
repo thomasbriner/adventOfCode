@@ -1,11 +1,11 @@
 import java.lang.Integer.min
 
 fun day8() {
-    var input = readInput(8)
+    val input = readInput(8)
 
     val forest = constructForest(input!!)
 
-    checkVisibility(forest)
+    calculatePropertyForAllTrees(forest, lambdaIsVisible)
 
     val nofVisible = forest.map {
         it.filter { tree -> tree.isVisible }.size
@@ -13,8 +13,8 @@ fun day8() {
 
     println(nofVisible)
 
+    calculatePropertyForAllTrees(forest, lambdaViewScore)
 
-    calculateViewScores(forest)
 
     val bestView = forest.map {
         it.map { tree -> tree.viewScore }.max()
@@ -35,61 +35,52 @@ fun constructForest(input: List<String>): MutableList<MutableList<Tree>> {
     return forest
 }
 
-fun checkVisibility(forest: MutableList<MutableList<Tree>>) {
+val lambdaIsVisible =
+    { left: List<Tree>, above: List<Tree>, right: List<Tree>, below: List<Tree>, tree: Tree ->
+        val isVisible = left.none { it.height >= tree.height }
+                || above.none { it.height >= tree.height }
+                || right.none { it.height >= tree.height }
+                || below.none { it.height >= tree.height }
+
+        tree.isVisible = isVisible
+    }
+
+val lambdaViewScore =
+    { left: List<Tree>, above: List<Tree>, right: List<Tree>, below: List<Tree>, tree: Tree ->
+        val viewScoreLeft = calculateViewScoreForDirection(left.reversed().toMutableList(), tree.height)
+        val viewScoreAbove = calculateViewScoreForDirection(above.reversed().toMutableList(), tree.height)
+        val viewScoreRight = calculateViewScoreForDirection(right, tree.height)
+        val viewScoreBelow = calculateViewScoreForDirection(below.toMutableList(), tree.height)
+
+        tree.viewScore = viewScoreLeft * viewScoreAbove * viewScoreRight * viewScoreBelow
+
+    }
+
+fun calculatePropertyForAllTrees(
+    forest: MutableList<MutableList<Tree>>,
+    lambda: (List<Tree>, List<Tree>, List<Tree>, List<Tree>, Tree) -> Unit
+) {
     val nofRows = forest.size
     val nofColumns = forest[0].size
 
 
-    for (row in 0..nofRows - 1) {
-        for (column in 0..nofColumns - 1) {
-            val height = forest[row][column].height
+    for (row in 0 until nofRows) {
+        for (column in 0 until nofColumns) {
 
             val left = forest[row].subList(0, column)
             val above = forest.map { it[column] }.subList(0, row)
             val right = forest[row].subList(column + 1, nofColumns)
             val below = forest.map { it[column] }.subList(row + 1, nofRows)
 
-            val isVisible = left.none { it.height >= height }
-                    || above.none { it.height >= height }
-                    || right.none { it.height >= height }
-                    || below.none { it.height >= height }
-
-            forest[row][column].isVisible = isVisible
+            lambda(left, above, right, below, forest[row][column])
 
         }
     }
 
 }
 
-
-fun calculateViewScores(forest: MutableList<MutableList<Tree>>) {
-    val nofRows = forest.size
-    val nofColumns = forest[0].size
-
-
-    for (row in 0..nofRows - 1) {
-        for (column in 0..nofColumns - 1) {
-            val height = forest[row][column].height
-
-            val left = forest[row].subList(0, column)
-            val above = forest.map { it[column] }.subList(0, row)
-            val right = forest[row].subList(column + 1, nofColumns)
-            val below = forest.map { it[column] }.subList(row + 1, nofRows)
-
-            val viewScoreLeft = calculateViewScoreForDirection(left.reversed().toMutableList(), height)
-            val viewScoreAbove = calculateViewScoreForDirection(above.reversed().toMutableList(), height)
-            val viewScoreRight = calculateViewScoreForDirection(right, height)
-            val viewScoreBelow = calculateViewScoreForDirection(below.toMutableList(), height)
-
-            forest[row][column].viewScore = viewScoreLeft * viewScoreAbove * viewScoreRight * viewScoreBelow
-
-        }
-    }
-
-}
-
-fun calculateViewScoreForDirection(trees: MutableList<Tree>, height: Int): Int {
-    if (trees.size == 0){
+fun calculateViewScoreForDirection(trees: List<Tree>, height: Int): Int {
+    if (trees.isEmpty()) {
         return 0
     }
     var viewScore = 1
@@ -98,7 +89,7 @@ fun calculateViewScoreForDirection(trees: MutableList<Tree>, height: Int): Int {
         treeIndex++
         viewScore++
     }
-    return min(viewScore,trees.size)
+    return min(viewScore, trees.size)
 }
 
 
